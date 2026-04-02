@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -7,12 +8,12 @@ from sqlalchemy.orm import joinedload, selectinload
 from common.db import SessionLocal, wait_for_db
 from common.models import Device, DeviceSettings, AnomalyMode
 
-
+FRONTEN_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 app = FastAPI(title="OT Monitoring API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[FRONTEN_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
