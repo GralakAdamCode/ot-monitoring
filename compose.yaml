@@ -1,0 +1,151 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      ot_net:
+        ipv4_address: ${POSTGRES_IP}
+
+  plc-sim:
+    build:
+      context: .
+      dockerfile: sims/plc/Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DEVICE_NAME: plc
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      ot_net:
+        ipv4_address: ${PLC_IP}
+
+  hmi-sim:
+    build:
+      context: .
+      dockerfile: sims/hmi/Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DEVICE_NAME: hmi
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      ot_net:
+        ipv4_address: ${HMI_IP}
+
+  sensor1-sim:
+    build:
+      context: .
+      dockerfile: sims/sensor/Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DEVICE_NAME: sensor1
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      ot_net:
+        ipv4_address: ${SENSOR1_IP}
+
+  sensor2-sim:
+    build:
+      context: .
+      dockerfile: sims/sensor/Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DEVICE_NAME: sensor2
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      ot_net:
+        ipv4_address: ${SENSOR2_IP}
+
+  sensor3-sim:
+    build:
+      context: .
+      dockerfile: sims/sensor/Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DEVICE_NAME: sensor3
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      ot_net:
+        ipv4_address: ${SENSOR3_IP}
+
+  detector:
+    build:
+      context: ./detector
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DEVICE_NAME: detector
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      ot_net:
+        ipv4_address: ${DETECTOR_IP}
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    networks:
+      - ot_net
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    env_file:
+      - ./.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "8000:8000"
+    networks:
+      ot_net:
+        ipv4_address: ${API_IP}
+networks:
+  ot_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${SUBNET}
+
+volumes:
+  postgres_data:
