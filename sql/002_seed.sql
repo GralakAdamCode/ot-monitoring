@@ -1,41 +1,27 @@
-INSERT INTO devices (name, kind, ip_address) VALUES
-    ('plc', 'plc', '172.28.0.10'),
-    ('hmi', 'hmi', '172.28.0.20'),
-    ('sensor1', 'sensor', '172.28.0.31'),
-    ('sensor2', 'sensor', '172.28.0.32'),
-    ('sensor3', 'sensor', '172.28.0.33'),
-    ('detector', 'detector', '172.28.0.100')
-ON CONFLICT (name) DO NOTHING;
+BEGIN;
+
+INSERT INTO devices (name, kind, ip_address, is_enabled)
+VALUES
+    ('plc',      'plc',      '172.28.0.10',  TRUE),
+    ('hmi',      'hmi',      '172.28.0.20',  TRUE),
+    ('sensor1',  'sensor',   '172.28.0.31',  TRUE),
+    ('sensor2',  'sensor',   '172.28.0.32',  TRUE),
+    ('sensor3',  'sensor',   '172.28.0.33',  TRUE),
+    ('detector', 'detector', '172.28.0.100', TRUE)
+ON CONFLICT (name) DO UPDATE
+SET
+    kind = EXCLUDED.kind,
+    ip_address = EXCLUDED.ip_address,
+    is_enabled = EXCLUDED.is_enabled;
 
 INSERT INTO device_settings (
     device_id,
+    status,
+    anomaly_mode,
+    anomaly_active,
+    refresh_interval_ms,
     bind_ip,
     bind_port,
-    anomaly_port,
-    payload_size,
-    response_payload_ok,
-    response_payload_unknown,
-    response_delay_ms,
-    timeout_ms,
-    reconnect_delay_ms
-)
-SELECT
-    id,
-    '0.0.0.0',
-    15000,
-    16000,
-    64,
-    'OK\n',
-    'UNKNOWN\n',
-    2000,
-    2000,
-    2000
-FROM devices
-WHERE name = 'plc'
-ON CONFLICT (device_id) DO NOTHING;
-
-INSERT INTO device_settings (
-    device_id,
     target_ip,
     target_port,
     anomaly_ip,
@@ -47,10 +33,104 @@ INSERT INTO device_settings (
     reconnect_delay_ms,
     payload_size,
     payload_pad,
-    request_payload
+    request_payload,
+    response_payload_ok,
+    response_payload_unknown,
+    response_delay_ms,
+    value_min,
+    value_max,
+    updated_at
 )
 SELECT
     id,
+    'unknown',
+    'normal',
+    FALSE,
+    2000,
+    '0.0.0.0',
+    15000,
+    NULL,
+    NULL,
+    NULL,
+    16000,
+    1000,
+    200,
+    50,
+    2000,
+    2000,
+    64,
+    256,
+    '',
+    E'OK\n',
+    E'UNKNOWN\n',
+    2000,
+    0.0,
+    100.0,
+    NOW()
+FROM devices
+WHERE name = 'plc'
+ON CONFLICT (device_id) DO UPDATE
+SET
+    status = EXCLUDED.status,
+    anomaly_mode = EXCLUDED.anomaly_mode,
+    anomaly_active = EXCLUDED.anomaly_active,
+    refresh_interval_ms = EXCLUDED.refresh_interval_ms,
+    bind_ip = EXCLUDED.bind_ip,
+    bind_port = EXCLUDED.bind_port,
+    target_ip = EXCLUDED.target_ip,
+    target_port = EXCLUDED.target_port,
+    anomaly_ip = EXCLUDED.anomaly_ip,
+    anomaly_port = EXCLUDED.anomaly_port,
+    normal_interval_ms = EXCLUDED.normal_interval_ms,
+    burst_interval_ms = EXCLUDED.burst_interval_ms,
+    jitter_percent = EXCLUDED.jitter_percent,
+    timeout_ms = EXCLUDED.timeout_ms,
+    reconnect_delay_ms = EXCLUDED.reconnect_delay_ms,
+    payload_size = EXCLUDED.payload_size,
+    payload_pad = EXCLUDED.payload_pad,
+    request_payload = EXCLUDED.request_payload,
+    response_payload_ok = EXCLUDED.response_payload_ok,
+    response_payload_unknown = EXCLUDED.response_payload_unknown,
+    response_delay_ms = EXCLUDED.response_delay_ms,
+    value_min = EXCLUDED.value_min,
+    value_max = EXCLUDED.value_max,
+    updated_at = NOW();
+
+INSERT INTO device_settings (
+    device_id,
+    status,
+    anomaly_mode,
+    anomaly_active,
+    refresh_interval_ms,
+    bind_ip,
+    bind_port,
+    target_ip,
+    target_port,
+    anomaly_ip,
+    anomaly_port,
+    normal_interval_ms,
+    burst_interval_ms,
+    jitter_percent,
+    timeout_ms,
+    reconnect_delay_ms,
+    payload_size,
+    payload_pad,
+    request_payload,
+    response_payload_ok,
+    response_payload_unknown,
+    response_delay_ms,
+    value_min,
+    value_max,
+    updated_at
+)
+SELECT
+    id,
+    'unknown',
+    'normal',
+    FALSE,
+    2000,
+    NULL,
+    NULL,
     '172.28.0.10',
     15000,
     '172.28.0.99',
@@ -62,13 +142,50 @@ SELECT
     2000,
     16,
     256,
-    'STATUS\n'
+    E'STATUS\n',
+    E'OK\n',
+    E'UNKNOWN\n',
+    0,
+    0.0,
+    100.0,
+    NOW()
 FROM devices
 WHERE name = 'hmi'
-ON CONFLICT (device_id) DO NOTHING;
+ON CONFLICT (device_id) DO UPDATE
+SET
+    status = EXCLUDED.status,
+    anomaly_mode = EXCLUDED.anomaly_mode,
+    anomaly_active = EXCLUDED.anomaly_active,
+    refresh_interval_ms = EXCLUDED.refresh_interval_ms,
+    bind_ip = EXCLUDED.bind_ip,
+    bind_port = EXCLUDED.bind_port,
+    target_ip = EXCLUDED.target_ip,
+    target_port = EXCLUDED.target_port,
+    anomaly_ip = EXCLUDED.anomaly_ip,
+    anomaly_port = EXCLUDED.anomaly_port,
+    normal_interval_ms = EXCLUDED.normal_interval_ms,
+    burst_interval_ms = EXCLUDED.burst_interval_ms,
+    jitter_percent = EXCLUDED.jitter_percent,
+    timeout_ms = EXCLUDED.timeout_ms,
+    reconnect_delay_ms = EXCLUDED.reconnect_delay_ms,
+    payload_size = EXCLUDED.payload_size,
+    payload_pad = EXCLUDED.payload_pad,
+    request_payload = EXCLUDED.request_payload,
+    response_payload_ok = EXCLUDED.response_payload_ok,
+    response_payload_unknown = EXCLUDED.response_payload_unknown,
+    response_delay_ms = EXCLUDED.response_delay_ms,
+    value_min = EXCLUDED.value_min,
+    value_max = EXCLUDED.value_max,
+    updated_at = NOW();
 
 INSERT INTO device_settings (
     device_id,
+    status,
+    anomaly_mode,
+    anomaly_active,
+    refresh_interval_ms,
+    bind_ip,
+    bind_port,
     target_ip,
     target_port,
     anomaly_ip,
@@ -80,11 +197,22 @@ INSERT INTO device_settings (
     reconnect_delay_ms,
     payload_size,
     payload_pad,
+    request_payload,
+    response_payload_ok,
+    response_payload_unknown,
+    response_delay_ms,
     value_min,
-    value_max
+    value_max,
+    updated_at
 )
 SELECT
     id,
+    'unknown',
+    'normal',
+    FALSE,
+    2000,
+    NULL,
+    NULL,
     '172.28.0.10',
     10001,
     '172.28.0.99',
@@ -96,14 +224,50 @@ SELECT
     2000,
     64,
     256,
+    '',
+    E'OK\n',
+    E'UNKNOWN\n',
+    0,
     20.0,
-    30.0
+    30.0,
+    NOW()
 FROM devices
 WHERE name = 'sensor1'
-ON CONFLICT (device_id) DO NOTHING;
+ON CONFLICT (device_id) DO UPDATE
+SET
+    status = EXCLUDED.status,
+    anomaly_mode = EXCLUDED.anomaly_mode,
+    anomaly_active = EXCLUDED.anomaly_active,
+    refresh_interval_ms = EXCLUDED.refresh_interval_ms,
+    bind_ip = EXCLUDED.bind_ip,
+    bind_port = EXCLUDED.bind_port,
+    target_ip = EXCLUDED.target_ip,
+    target_port = EXCLUDED.target_port,
+    anomaly_ip = EXCLUDED.anomaly_ip,
+    anomaly_port = EXCLUDED.anomaly_port,
+    normal_interval_ms = EXCLUDED.normal_interval_ms,
+    burst_interval_ms = EXCLUDED.burst_interval_ms,
+    jitter_percent = EXCLUDED.jitter_percent,
+    timeout_ms = EXCLUDED.timeout_ms,
+    reconnect_delay_ms = EXCLUDED.reconnect_delay_ms,
+    payload_size = EXCLUDED.payload_size,
+    payload_pad = EXCLUDED.payload_pad,
+    request_payload = EXCLUDED.request_payload,
+    response_payload_ok = EXCLUDED.response_payload_ok,
+    response_payload_unknown = EXCLUDED.response_payload_unknown,
+    response_delay_ms = EXCLUDED.response_delay_ms,
+    value_min = EXCLUDED.value_min,
+    value_max = EXCLUDED.value_max,
+    updated_at = NOW();
 
 INSERT INTO device_settings (
     device_id,
+    status,
+    anomaly_mode,
+    anomaly_active,
+    refresh_interval_ms,
+    bind_ip,
+    bind_port,
     target_ip,
     target_port,
     anomaly_ip,
@@ -115,11 +279,22 @@ INSERT INTO device_settings (
     reconnect_delay_ms,
     payload_size,
     payload_pad,
+    request_payload,
+    response_payload_ok,
+    response_payload_unknown,
+    response_delay_ms,
     value_min,
-    value_max
+    value_max,
+    updated_at
 )
 SELECT
     id,
+    'unknown',
+    'normal',
+    FALSE,
+    2000,
+    NULL,
+    NULL,
     '172.28.0.10',
     10002,
     '172.28.0.99',
@@ -131,14 +306,50 @@ SELECT
     2000,
     64,
     256,
+    '',
+    E'OK\n',
+    E'UNKNOWN\n',
+    0,
     20.0,
-    30.0
+    30.0,
+    NOW()
 FROM devices
 WHERE name = 'sensor2'
-ON CONFLICT (device_id) DO NOTHING;
+ON CONFLICT (device_id) DO UPDATE
+SET
+    status = EXCLUDED.status,
+    anomaly_mode = EXCLUDED.anomaly_mode,
+    anomaly_active = EXCLUDED.anomaly_active,
+    refresh_interval_ms = EXCLUDED.refresh_interval_ms,
+    bind_ip = EXCLUDED.bind_ip,
+    bind_port = EXCLUDED.bind_port,
+    target_ip = EXCLUDED.target_ip,
+    target_port = EXCLUDED.target_port,
+    anomaly_ip = EXCLUDED.anomaly_ip,
+    anomaly_port = EXCLUDED.anomaly_port,
+    normal_interval_ms = EXCLUDED.normal_interval_ms,
+    burst_interval_ms = EXCLUDED.burst_interval_ms,
+    jitter_percent = EXCLUDED.jitter_percent,
+    timeout_ms = EXCLUDED.timeout_ms,
+    reconnect_delay_ms = EXCLUDED.reconnect_delay_ms,
+    payload_size = EXCLUDED.payload_size,
+    payload_pad = EXCLUDED.payload_pad,
+    request_payload = EXCLUDED.request_payload,
+    response_payload_ok = EXCLUDED.response_payload_ok,
+    response_payload_unknown = EXCLUDED.response_payload_unknown,
+    response_delay_ms = EXCLUDED.response_delay_ms,
+    value_min = EXCLUDED.value_min,
+    value_max = EXCLUDED.value_max,
+    updated_at = NOW();
 
 INSERT INTO device_settings (
     device_id,
+    status,
+    anomaly_mode,
+    anomaly_active,
+    refresh_interval_ms,
+    bind_ip,
+    bind_port,
     target_ip,
     target_port,
     anomaly_ip,
@@ -150,11 +361,22 @@ INSERT INTO device_settings (
     reconnect_delay_ms,
     payload_size,
     payload_pad,
+    request_payload,
+    response_payload_ok,
+    response_payload_unknown,
+    response_delay_ms,
     value_min,
-    value_max
+    value_max,
+    updated_at
 )
 SELECT
     id,
+    'unknown',
+    'normal',
+    FALSE,
+    2000,
+    NULL,
+    NULL,
     '172.28.0.10',
     10003,
     '172.28.0.99',
@@ -166,35 +388,150 @@ SELECT
     2000,
     64,
     256,
+    '',
+    E'OK\n',
+    E'UNKNOWN\n',
+    0,
     20.0,
-    30.0
+    30.0,
+    NOW()
 FROM devices
 WHERE name = 'sensor3'
-ON CONFLICT (device_id) DO NOTHING;
+ON CONFLICT (device_id) DO UPDATE
+SET
+    status = EXCLUDED.status,
+    anomaly_mode = EXCLUDED.anomaly_mode,
+    anomaly_active = EXCLUDED.anomaly_active,
+    refresh_interval_ms = EXCLUDED.refresh_interval_ms,
+    bind_ip = EXCLUDED.bind_ip,
+    bind_port = EXCLUDED.bind_port,
+    target_ip = EXCLUDED.target_ip,
+    target_port = EXCLUDED.target_port,
+    anomaly_ip = EXCLUDED.anomaly_ip,
+    anomaly_port = EXCLUDED.anomaly_port,
+    normal_interval_ms = EXCLUDED.normal_interval_ms,
+    burst_interval_ms = EXCLUDED.burst_interval_ms,
+    jitter_percent = EXCLUDED.jitter_percent,
+    timeout_ms = EXCLUDED.timeout_ms,
+    reconnect_delay_ms = EXCLUDED.reconnect_delay_ms,
+    payload_size = EXCLUDED.payload_size,
+    payload_pad = EXCLUDED.payload_pad,
+    request_payload = EXCLUDED.request_payload,
+    response_payload_ok = EXCLUDED.response_payload_ok,
+    response_payload_unknown = EXCLUDED.response_payload_unknown,
+    response_delay_ms = EXCLUDED.response_delay_ms,
+    value_min = EXCLUDED.value_min,
+    value_max = EXCLUDED.value_max,
+    updated_at = NOW();
 
 INSERT INTO device_settings (
     device_id,
-    normal_interval_ms
+    status,
+    anomaly_mode,
+    anomaly_active,
+    refresh_interval_ms,
+    bind_ip,
+    bind_port,
+    target_ip,
+    target_port,
+    anomaly_ip,
+    anomaly_port,
+    normal_interval_ms,
+    burst_interval_ms,
+    jitter_percent,
+    timeout_ms,
+    reconnect_delay_ms,
+    payload_size,
+    payload_pad,
+    request_payload,
+    response_payload_ok,
+    response_payload_unknown,
+    response_delay_ms,
+    value_min,
+    value_max,
+    updated_at
 )
 SELECT
     id,
-    5000
+    'unknown',
+    'normal',
+    FALSE,
+    2000,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    5000,
+    200,
+    50,
+    2000,
+    2000,
+    64,
+    256,
+    '',
+    E'OK\n',
+    E'UNKNOWN\n',
+    0,
+    0.0,
+    100.0,
+    NOW()
 FROM devices
 WHERE name = 'detector'
-ON CONFLICT (device_id) DO NOTHING;
+ON CONFLICT (device_id) DO UPDATE
+SET
+    status = EXCLUDED.status,
+    anomaly_mode = EXCLUDED.anomaly_mode,
+    anomaly_active = EXCLUDED.anomaly_active,
+    refresh_interval_ms = EXCLUDED.refresh_interval_ms,
+    bind_ip = EXCLUDED.bind_ip,
+    bind_port = EXCLUDED.bind_port,
+    target_ip = EXCLUDED.target_ip,
+    target_port = EXCLUDED.target_port,
+    anomaly_ip = EXCLUDED.anomaly_ip,
+    anomaly_port = EXCLUDED.anomaly_port,
+    normal_interval_ms = EXCLUDED.normal_interval_ms,
+    burst_interval_ms = EXCLUDED.burst_interval_ms,
+    jitter_percent = EXCLUDED.jitter_percent,
+    timeout_ms = EXCLUDED.timeout_ms,
+    reconnect_delay_ms = EXCLUDED.reconnect_delay_ms,
+    payload_size = EXCLUDED.payload_size,
+    payload_pad = EXCLUDED.payload_pad,
+    request_payload = EXCLUDED.request_payload,
+    response_payload_ok = EXCLUDED.response_payload_ok,
+    response_payload_unknown = EXCLUDED.response_payload_unknown,
+    response_delay_ms = EXCLUDED.response_delay_ms,
+    value_min = EXCLUDED.value_min,
+    value_max = EXCLUDED.value_max,
+    updated_at = NOW();
 
-INSERT INTO device_listen_ports (device_id, protocol, port)
-SELECT id, 'udp', 10001 FROM devices WHERE name = 'plc'
-ON CONFLICT (device_id, protocol, port) DO NOTHING;
+INSERT INTO device_listen_ports (device_id, protocol, port, is_enabled)
+SELECT id, 'udp', 10001, TRUE
+FROM devices
+WHERE name = 'plc'
+ON CONFLICT (device_id, protocol, port) DO UPDATE
+SET is_enabled = EXCLUDED.is_enabled;
 
-INSERT INTO device_listen_ports (device_id, protocol, port)
-SELECT id, 'udp', 10002 FROM devices WHERE name = 'plc'
-ON CONFLICT (device_id, protocol, port) DO NOTHING;
+INSERT INTO device_listen_ports (device_id, protocol, port, is_enabled)
+SELECT id, 'udp', 10002, TRUE
+FROM devices
+WHERE name = 'plc'
+ON CONFLICT (device_id, protocol, port) DO UPDATE
+SET is_enabled = EXCLUDED.is_enabled;
 
-INSERT INTO device_listen_ports (device_id, protocol, port)
-SELECT id, 'udp', 10003 FROM devices WHERE name = 'plc'
-ON CONFLICT (device_id, protocol, port) DO NOTHING;
+INSERT INTO device_listen_ports (device_id, protocol, port, is_enabled)
+SELECT id, 'udp', 10003, TRUE
+FROM devices
+WHERE name = 'plc'
+ON CONFLICT (device_id, protocol, port) DO UPDATE
+SET is_enabled = EXCLUDED.is_enabled;
 
-INSERT INTO device_listen_ports (device_id, protocol, port)
-SELECT id, 'tcp', 15000 FROM devices WHERE name = 'plc'
-ON CONFLICT (device_id, protocol, port) DO NOTHING;
+INSERT INTO device_listen_ports (device_id, protocol, port, is_enabled)
+SELECT id, 'tcp', 15000, TRUE
+FROM devices
+WHERE name = 'plc'
+ON CONFLICT (device_id, protocol, port) DO UPDATE
+SET is_enabled = EXCLUDED.is_enabled;
+
+COMMIT;
