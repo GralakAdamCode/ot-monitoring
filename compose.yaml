@@ -1,10 +1,13 @@
 services:
+
   postgres:
     image: postgres:16
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql:/docker-entrypoint-initdb.d:ro
@@ -14,9 +17,8 @@ services:
       timeout: 3s
       retries: 20
     networks:
-      ot_net:
-        ipv4_address: ${POSTGRES_IP}
-
+      - app_net
+          
   plc-sim:
     build:
       context: .
@@ -32,6 +34,7 @@ services:
     networks:
       ot_net:
         ipv4_address: ${PLC_IP}
+      app_net:
 
   hmi-sim:
     build:
@@ -48,6 +51,7 @@ services:
     networks:
       ot_net:
         ipv4_address: ${HMI_IP}
+      app_net:
 
   sensor1-sim:
     build:
@@ -64,6 +68,7 @@ services:
     networks:
       ot_net:
         ipv4_address: ${SENSOR1_IP}
+      app_net:
 
   sensor2-sim:
     build:
@@ -80,6 +85,7 @@ services:
     networks:
       ot_net:
         ipv4_address: ${SENSOR2_IP}
+      app_net:
 
   sensor3-sim:
     build:
@@ -96,6 +102,7 @@ services:
     networks:
       ot_net:
         ipv4_address: ${SENSOR3_IP}
+      app_net:
 
   detector:
     build:
@@ -106,12 +113,26 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     environment:
       DEVICE_NAME: detector
-      DATABASE_URL: ${DATABASE_URL}
-    networks:
-      ot_net:
-        ipv4_address: ${DETECTOR_IP}
+      MONITOR_IFACE: otbr0
+      API_BASE_URL: http://127.0.0.1:8000
+      AGG_INTERVAL_SECONDS: 1
+      WARMUP_SECONDS: 60
+      SILENCE_SECONDS: 10
+      BURST_MULTIPLIER: 3.0
+      LARGE_PAYLOAD_THRESHOLD: 256
+      JITTER_MULTIPLIER: 3.0
+      RST_STORM_THRESHOLD: 3
+      DETECTOR_MODE: hybrid
+      ENABLE_ML: "false"
+
   frontend:
     build:
       context: ./frontend
@@ -123,7 +144,8 @@ services:
     ports:
       - "5173:5173"
     networks:
-      - ot_net
+      - app_net
+
   api:
     build:
       context: .
@@ -138,14 +160,19 @@ services:
     ports:
       - "8000:8000"
     networks:
-      ot_net:
-        ipv4_address: ${API_IP}
+      - app_net
+
 networks:
   ot_net:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: otbr0
     ipam:
       config:
         - subnet: ${SUBNET}
+
+  app_net:
+    driver: bridge
 
 volumes:
   postgres_data:
