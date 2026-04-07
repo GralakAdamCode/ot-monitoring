@@ -1,7 +1,7 @@
 import enum
 import uuid
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String, Text, text
-from sqlalchemy.dialects.postgresql import INET, UUID
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, text
+from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -166,3 +166,81 @@ class DeviceListenPort(Base):
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     device: Mapped["Device"] = relationship(back_populates="listen_ports")
+
+class TrafficObservation(Base):
+    __tablename__ = "traffic_observations"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+
+    window_ts: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    src_ip: Mapped[str | None] = mapped_column(INET, nullable=True)
+    dst_ip: Mapped[str | None] = mapped_column(INET, nullable=True)
+    protocol: Mapped[str] = mapped_column(String(16), nullable=False)
+    dst_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    packet_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    packet_rate: Mapped[float] = mapped_column(Float, nullable=False)
+    byte_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    avg_packet_size: Mapped[float] = mapped_column(Float, nullable=False)
+    avg_interarrival_ms: Mapped[float] = mapped_column(Float, nullable=False)
+    jitter_ms: Mapped[float] = mapped_column(Float, nullable=False)
+
+    max_payload: Mapped[int] = mapped_column(Integer, nullable=False)
+    arp_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    tcp_syn_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    tcp_rst_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+
+    ml_anomaly: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    ml_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    created_at: Mapped[object] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    )
+
+
+class AnomalyEvent(Base):
+    __tablename__ = "anomaly_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    detected_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    src_ip: Mapped[str | None] = mapped_column(INET, nullable=True)
+    dst_ip: Mapped[str | None] = mapped_column(INET, nullable=True)
+    protocol: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    dst_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    details: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+
+    created_at: Mapped[object] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    )
