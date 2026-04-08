@@ -11,6 +11,12 @@ import {
   Filler
 } from "chart.js";
 import { Line } from "vue-chartjs";
+import type {
+  Device,
+  TrafficPoint,
+  DashboardEvent,
+  DeviceLiveResponse
+} from "./types/dashboard";
 
 ChartJS.register(
   CategoryScale,
@@ -21,56 +27,6 @@ ChartJS.register(
   Legend,
   Filler
 );
-
-type Device = {
-  name: string;
-  kind: string;
-  ip_address: string;
-  status: string;
-  anomaly_mode: string;
-  anomaly_active: boolean;
-  bind_ip?: string | null;
-  bind_port?: number | null;
-  target_ip?: string | null;
-  target_port?: number | null;
-};
-
-type TrafficPoint = {
-  ts: string;
-  packet_rate_sum: number;
-  byte_count_sum: number;
-  payload_bytes_sum: number;
-  avg_jitter_ms: number;
-  max_payload: number;
-  flow_count: number;
-  ml_anomaly_count: number;
-  event_count: number;
-};
-
-type DashboardEvent = {
-  id: string;
-  event_type: string;
-  severity: string;
-  title: string;
-  detected_at: string;
-  src_ip?: string | null;
-  dst_ip?: string | null;
-  protocol?: string | null;
-  dst_port?: number | null;
-  details?: Record<string, unknown>;
-};
-
-type DeviceLiveResponse = {
-  device: {
-    name: string;
-    ip_address: string;
-    kind: string;
-    status: string;
-  };
-  window_minutes: number;
-  points: TrafficPoint[];
-  events: DashboardEvent[];
-};
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -133,11 +89,11 @@ const chartOptions = {
 };
 
 const livePacketRateChartData = computed(() => ({
-  labels: (liveDeviceData.value?.points ?? []).map((p) => formatTs(p.ts)),
+  labels: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => formatTs(p.ts)),
   datasets: [
     {
       label: "Suma packet_rate",
-      data: (liveDeviceData.value?.points ?? []).map((p) => p.packet_rate_sum),
+      data: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => p.packet_rate_sum),
       borderColor: "#60a5fa",
       backgroundColor: "rgba(96, 165, 250, 0.18)",
       fill: true,
@@ -149,11 +105,11 @@ const livePacketRateChartData = computed(() => ({
 }));
 
 const liveByteCountChartData = computed(() => ({
-  labels: (liveDeviceData.value?.points ?? []).map((p) => formatTs(p.ts)),
+  labels: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => formatTs(p.ts)),
   datasets: [
     {
       label: "Byte count",
-      data: (liveDeviceData.value?.points ?? []).map((p) => p.byte_count_sum),
+      data: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => p.byte_count_sum),
       borderColor: "#34d399",
       backgroundColor: "rgba(52, 211, 153, 0.18)",
       fill: true,
@@ -165,11 +121,11 @@ const liveByteCountChartData = computed(() => ({
 }));
 
 const liveJitterChartData = computed(() => ({
-  labels: (liveDeviceData.value?.points ?? []).map((p) => formatTs(p.ts)),
+  labels: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => formatTs(p.ts)),
   datasets: [
     {
       label: "Średni jitter [ms]",
-      data: (liveDeviceData.value?.points ?? []).map((p) => p.avg_jitter_ms),
+      data: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => p.avg_jitter_ms),
       borderColor: "#f59e0b",
       backgroundColor: "rgba(245, 158, 11, 0.18)",
       fill: true,
@@ -181,11 +137,11 @@ const liveJitterChartData = computed(() => ({
 }));
 
 const liveAnomalyChartData = computed(() => ({
-  labels: (liveDeviceData.value?.points ?? []).map((p) => formatTs(p.ts)),
+  labels: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => formatTs(p.ts)),
   datasets: [
     {
       label: "ML anomalies",
-      data: (liveDeviceData.value?.points ?? []).map((p) => p.ml_anomaly_count),
+      data: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => p.ml_anomaly_count),
       borderColor: "rgba(239, 68, 68, 0.9)",
       backgroundColor: "rgba(239, 68, 68, 0.18)",
       fill: false,
@@ -195,7 +151,7 @@ const liveAnomalyChartData = computed(() => ({
     },
     {
       label: "Eventy",
-      data: (liveDeviceData.value?.points ?? []).map((p) => p.event_count),
+      data: (liveDeviceData.value?.points ?? []).map((p: TrafficPoint) => p.event_count),
       borderColor: "rgba(168, 85, 247, 0.9)",
       backgroundColor: "rgba(168, 85, 247, 0.18)",
       fill: false,
@@ -311,16 +267,34 @@ function closeDeviceLive() {
   }
 }
 
-function statusClass(status: string) {
-  if (status === "online") return "badge badge--online";
-  if (status === "offline") return "badge badge--offline";
-  return "badge badge--unknown";
+function statusBadgeClass(status: string) {
+  if (status === "online") {
+    return "bg-emerald-500/15 text-emerald-300";
+  }
+  if (status === "offline") {
+    return "bg-red-500/15 text-red-300";
+  }
+  return "bg-slate-400/15 text-slate-300";
 }
 
-function severityClass(severity: string) {
-  if (severity === "critical") return "event-card event-card--critical";
-  if (severity === "warning") return "event-card event-card--warning";
-  return "event-card";
+function severityCardClass(severity: string) {
+  if (severity === "critical") {
+    return "border-red-500/30 bg-gradient-to-b from-red-950/60 to-slate-900/90";
+  }
+  if (severity === "warning") {
+    return "border-amber-500/30 bg-gradient-to-b from-amber-950/40 to-slate-900/90";
+  }
+  return "border-slate-700/70 bg-gradient-to-b from-slate-900/95 to-slate-900/85";
+}
+
+function severityPillClass(severity: string) {
+  if (severity === "critical") {
+    return "bg-red-500/15 text-red-300";
+  }
+  if (severity === "warning") {
+    return "bg-amber-500/15 text-amber-200";
+  }
+  return "bg-slate-400/15 text-slate-200";
 }
 
 onMounted(async () => {
@@ -335,731 +309,321 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="app-shell">
-    <header class="hero">
-      <div class="hero__content">
-        <p class="hero__eyebrow">OT MONITORING</p>
-        <h1 class="hero__title">Panel sterowania środowiskiem</h1>
-        <p class="hero__subtitle">
-          Kliknij kafelek urządzenia, aby zobaczyć live view dla wybranego elementu.
-        </p>
-      </div>
+  <div
+    class="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_30%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.14),transparent_24%),linear-gradient(180deg,#070b14_0%,#0b1120_100%)] text-slate-200"
+  >
+    <div class="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
+      <header class="mb-7 grid gap-6">
+        <div>
+          <p class="mb-2 text-xs font-extrabold uppercase tracking-[0.16em] text-blue-400">
+            OT MONITORING
+          </p>
+          <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Panel sterowania środowiskiem
+          </h1>
+          <p class="mt-3 max-w-3xl text-sm text-slate-400 sm:text-base">
+            Kliknij kafelek urządzenia, aby zobaczyć live view dla wybranego elementu.
+          </p>
+        </div>
 
-      <div class="stats-grid">
-        <article class="stat-card">
-          <span class="stat-card__label">Urządzenia</span>
-          <strong class="stat-card__value">{{ totalDevices }}</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-card__label">Online</span>
-          <strong class="stat-card__value">{{ onlineDevices }}</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-card__label">Aktywne anomalie</span>
-          <strong class="stat-card__value">{{ activeAnomalies }}</strong>
-        </article>
-      </div>
-    </header>
+        <div class="grid gap-3 md:grid-cols-3">
+          <article class="rounded-2xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/85 p-5 shadow-2xl shadow-black/30">
+            <span class="block text-sm text-slate-400">Urządzenia</span>
+            <strong class="mt-2 block text-3xl font-extrabold tracking-tight text-white">
+              {{ totalDevices }}
+            </strong>
+          </article>
 
-    <section class="toolbar">
-      <div>
-        <h2 class="section-title">Urządzenia</h2>
-        <p class="section-subtitle">
-          Zmieniaj tryby i obserwuj stan symulowanych elementów.
-        </p>
-      </div>
+          <article class="rounded-2xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/85 p-5 shadow-2xl shadow-black/30">
+            <span class="block text-sm text-slate-400">Online</span>
+            <strong class="mt-2 block text-3xl font-extrabold tracking-tight text-white">
+              {{ onlineDevices }}
+            </strong>
+          </article>
 
-      <button class="btn btn--secondary" @click="loadData" :disabled="loading">
-        <span>Odśwież urządzenia</span>
-        <span v-if="loading" class="btn__spinner"></span>
-      </button>
-    </section>
+          <article class="rounded-2xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/85 p-5 shadow-2xl shadow-black/30">
+            <span class="block text-sm text-slate-400">Aktywne anomalie</span>
+            <strong class="mt-2 block text-3xl font-extrabold tracking-tight text-white">
+              {{ activeAnomalies }}
+            </strong>
+          </article>
+        </div>
+      </header>
 
-    <div v-if="error" class="error-box">
-      {{ error }}
-    </div>
+      <section class="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h2 class="text-xl font-semibold text-white">Urządzenia</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Zmieniaj tryby i obserwuj stan symulowanych elementów.
+          </p>
+        </div>
 
-    <main class="device-grid">
-      <article
-        v-for="device in devices"
-        :key="device.name"
-        class="device-card device-card--interactive"
-        @click="openDeviceLive(device.name)"
+        <button
+          class="inline-flex min-w-[148px] items-center justify-center gap-2 rounded-xl border border-blue-400/20 bg-slate-800/80 px-4 py-2.5 font-semibold text-blue-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-80"
+          @click="loadData"
+          :disabled="loading"
+        >
+          <span>Odśwież urządzenia</span>
+          <span
+            v-if="loading"
+            class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
+          ></span>
+        </button>
+      </section>
+
+      <div
+        v-if="error"
+        class="mb-5 rounded-2xl border border-red-500/20 bg-red-950/30 px-4 py-3 text-sm text-red-200"
       >
-        <div class="device-card__header">
-          <div>
-            <h3 class="device-card__title">{{ device.name }}</h3>
-            <div class="device-card__badges">
-              <span class="badge badge--kind">{{ device.kind }}</span>
-              <span :class="statusClass(device.status)">
-                {{ device.status }}
+        {{ error }}
+      </div>
+
+      <main class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <article
+          v-for="device in devices"
+          :key="device.name"
+          class="flex cursor-pointer flex-col gap-4 rounded-3xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/85 p-5 shadow-2xl shadow-black/30 transition duration-200 hover:-translate-y-0.5 hover:border-blue-400/30"
+          @click="openDeviceLive(device.name)"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-3xl font-bold tracking-tight text-white">
+                {{ device.name }}
+              </h3>
+
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span class="inline-flex items-center justify-center rounded-full bg-slate-400/15 px-3 py-1 text-xs font-bold text-slate-200">
+                  {{ device.kind }}
+                </span>
+                <span
+                  class="inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-bold"
+                  :class="statusBadgeClass(device.status)"
+                >
+                  {{ device.status }}
+                </span>
+              </div>
+            </div>
+
+            <span
+              class="inline-flex whitespace-nowrap rounded-full bg-slate-400/15 px-3 py-1 text-xs font-bold uppercase text-slate-100"
+              :class="device.anomaly_active ? 'bg-amber-500/15 text-amber-200' : ''"
+            >
+              {{ device.anomaly_mode }}
+            </span>
+          </div>
+
+          <div class="grid gap-2.5">
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-700/40 bg-white/5 px-3 py-3">
+              <span class="text-sm text-slate-400">IP</span>
+              <span class="text-right text-sm font-semibold text-slate-100 break-all">
+                {{ device.ip_address }}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-700/40 bg-white/5 px-3 py-3">
+              <span class="text-sm text-slate-400">Bind</span>
+              <span class="text-right text-sm font-semibold text-slate-100 break-all">
+                {{ device.bind_ip ?? "-" }}:{{ device.bind_port ?? "-" }}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-700/40 bg-white/5 px-3 py-3">
+              <span class="text-sm text-slate-400">Target</span>
+              <span class="text-right text-sm font-semibold text-slate-100 break-all">
+                {{ device.target_ip ?? "-" }}:{{ device.target_port ?? "-" }}
               </span>
             </div>
           </div>
 
-          <span
-            class="mode-pill"
-            :class="{ 'mode-pill--alert': device.anomaly_active }"
-          >
-            {{ device.anomaly_mode }}
-          </span>
-        </div>
+          <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_auto]" @click.stop>
+            <select
+              class="w-full rounded-xl border border-slate-700/60 bg-slate-950/80 px-3 py-2.5 text-slate-100 outline-none"
+              v-model="selectedModes[device.name]"
+            >
+              <option v-for="mode in modes" :key="mode" :value="mode">
+                {{ mode }}
+              </option>
+            </select>
 
-        <div class="device-card__body">
-          <div class="kv-row">
-            <span class="kv-row__label">IP</span>
-            <span class="kv-row__value">{{ device.ip_address }}</span>
-          </div>
-
-          <div class="kv-row">
-            <span class="kv-row__label">Bind</span>
-            <span class="kv-row__value">
-              {{ device.bind_ip ?? "-" }}:{{ device.bind_port ?? "-" }}
-            </span>
-          </div>
-
-          <div class="kv-row">
-            <span class="kv-row__label">Target</span>
-            <span class="kv-row__value">
-              {{ device.target_ip ?? "-" }}:{{ device.target_port ?? "-" }}
-            </span>
-          </div>
-        </div>
-
-        <div class="device-card__footer" @click.stop>
-          <select class="select" v-model="selectedModes[device.name]">
-            <option v-for="mode in modes" :key="mode" :value="mode">
-              {{ mode }}
-            </option>
-          </select>
-
-          <button
-            class="btn btn--primary"
-            @click.stop="saveMode(device.name)"
-            :disabled="savingDevice === device.name"
-          >
-            <span>Zapisz</span>
-            <span v-if="savingDevice === device.name" class="btn__spinner"></span>
-          </button>
-        </div>
-
-        <p class="device-card__hint">Kliknij kartę, aby otworzyć Show live</p>
-      </article>
-    </main>
-
-    <div v-if="liveModalOpen" class="modal-backdrop" @click="closeDeviceLive">
-      <div class="modal-card" @click.stop>
-        <div class="modal-card__header">
-          <div>
-            <p class="hero__eyebrow">SHOW LIVE</p>
-            <h2 class="section-title">
-              {{ liveDeviceData?.device.name ?? liveDeviceName }}
-            </h2>
-            <p class="section-subtitle" v-if="liveDeviceData">
-              {{ liveDeviceData.device.kind }} · {{ liveDeviceData.device.ip_address }} ·
-              ostatnie {{ liveDeviceData.window_minutes }} minut
-            </p>
-          </div>
-
-          <div class="modal-card__actions">
-            <button class="btn btn--secondary" @click="loadDeviceLive" :disabled="liveLoading">
-              <span>Odśwież live</span>
-              <span v-if="liveLoading" class="btn__spinner"></span>
-            </button>
-            <button class="btn btn--secondary" @click="closeDeviceLive">
-              Zamknij
+            <button
+              class="inline-flex min-w-[110px] items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-blue-600 to-blue-700 px-4 py-2.5 font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-80"
+              @click.stop="saveMode(device.name)"
+              :disabled="savingDevice === device.name"
+            >
+              <span>Zapisz</span>
+              <span
+                v-if="savingDevice === device.name"
+                class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
+              ></span>
             </button>
           </div>
-        </div>
 
-        <div v-if="liveDeviceData" class="charts-grid">
-          <article class="chart-card">
-            <div class="chart-card__header">
-              <h3>Ruch pakietów</h3>
-              <p>Suma packet_rate z ostatnich 5 minut</p>
-            </div>
-            <div class="chart-wrap">
-              <Line :data="livePacketRateChartData" :options="chartOptions" />
-            </div>
-          </article>
+          <p class="text-xs text-slate-400">
+            Kliknij kartę, aby otworzyć Show live
+          </p>
+        </article>
+      </main>
 
-          <article class="chart-card">
-            <div class="chart-card__header">
-              <h3>Byte count</h3>
-              <p>Wolumen ruchu w czasie</p>
-            </div>
-            <div class="chart-wrap">
-              <Line :data="liveByteCountChartData" :options="chartOptions" />
-            </div>
-          </article>
-
-          <article class="chart-card">
-            <div class="chart-card__header">
-              <h3>Jitter</h3>
-              <p>Średni jitter w oknach czasowych</p>
-            </div>
-            <div class="chart-wrap">
-              <Line :data="liveJitterChartData" :options="chartOptions" />
-            </div>
-          </article>
-
-          <article class="chart-card">
-            <div class="chart-card__header">
-              <h3>Anomalie i eventy</h3>
-              <p>ML + rule-based zdarzenia</p>
-            </div>
-            <div class="chart-wrap">
-              <Line :data="liveAnomalyChartData" :options="chartOptions" />
-            </div>
-          </article>
-        </div>
-
-        <section v-if="liveDeviceData" class="events-section">
-          <div class="section-head">
+      <div
+        v-if="liveModalOpen"
+        class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur md:p-6"
+        @click="closeDeviceLive"
+      >
+        <div
+          class="max-h-[92vh] w-full max-w-7xl overflow-auto rounded-3xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/90 p-4 shadow-2xl shadow-black/50 md:p-6"
+          @click.stop
+        >
+          <div class="mb-5 flex flex-col items-start justify-between gap-4 md:flex-row">
             <div>
-              <h2 class="section-title">Ostatnie eventy</h2>
-              <p class="section-subtitle">
-                Feed najnowszych anomalii i zdarzeń dla wybranego urządzenia.
+              <p class="mb-2 text-xs font-extrabold uppercase tracking-[0.16em] text-blue-400">
+                SHOW LIVE
+              </p>
+              <h2 class="text-2xl font-bold text-white">
+                {{ liveDeviceData?.device.name ?? liveDeviceName }}
+              </h2>
+              <p class="mt-1 text-sm text-slate-400" v-if="liveDeviceData">
+                {{ liveDeviceData.device.kind }} · {{ liveDeviceData.device.ip_address }} ·
+                ostatnie {{ liveDeviceData.window_minutes }} minut
               </p>
             </div>
+
+            <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <button
+                class="inline-flex min-w-[132px] items-center justify-center gap-2 rounded-xl border border-blue-400/20 bg-slate-800/80 px-4 py-2.5 font-semibold text-blue-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-80"
+                @click="loadDeviceLive"
+                :disabled="liveLoading"
+              >
+                <span>Odśwież live</span>
+                <span
+                  v-if="liveLoading"
+                  class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                ></span>
+              </button>
+
+              <button
+                class="inline-flex min-w-[132px] items-center justify-center rounded-xl border border-blue-400/20 bg-slate-800/80 px-4 py-2.5 font-semibold text-blue-100 transition hover:bg-slate-800"
+                @click="closeDeviceLive"
+              >
+                Zamknij
+              </button>
+            </div>
           </div>
 
-          <div class="events-list">
-            <article
-              v-for="event in liveDeviceData.events"
-              :key="event.id"
-              :class="severityClass(event.severity)"
-            >
-              <div class="event-card__top">
-                <div>
-                  <h3 class="event-card__title">{{ event.title }}</h3>
-                  <p class="event-card__meta">
-                    {{ formatTs(event.detected_at) }} · {{ event.event_type }} · {{ event.severity }}
-                  </p>
-                </div>
-                <span class="mode-pill" :class="{ 'mode-pill--alert': event.severity !== 'info' }">
-                  {{ event.severity }}
-                </span>
+          <div v-if="liveDeviceData" class="mb-6 grid gap-4 xl:grid-cols-2">
+            <article class="rounded-3xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/85 p-5 shadow-2xl shadow-black/30">
+              <div class="mb-3">
+                <h3 class="text-xl font-semibold text-white">Ruch pakietów</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                  Suma packet_rate z ostatnich 5 minut
+                </p>
               </div>
-
-              <div class="event-card__body">
-                <div class="kv-row">
-                  <span class="kv-row__label">Źródło</span>
-                  <span class="kv-row__value">{{ event.src_ip ?? "-" }}</span>
-                </div>
-
-                <div class="kv-row">
-                  <span class="kv-row__label">Cel</span>
-                  <span class="kv-row__value">
-                    {{ event.dst_ip ?? "-" }}:{{ event.dst_port ?? "-" }}
-                  </span>
-                </div>
-
-                <div class="kv-row">
-                  <span class="kv-row__label">Protokół</span>
-                  <span class="kv-row__value">{{ event.protocol ?? "-" }}</span>
-                </div>
+              <div class="h-80">
+                <Line :data="livePacketRateChartData" :options="chartOptions" />
               </div>
             </article>
 
-            <div v-if="liveDeviceData.events.length === 0" class="empty-box">
-              Brak eventów do wyświetlenia.
-            </div>
+            <article class="rounded-3xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/85 p-5 shadow-2xl shadow-black/30">
+              <div class="mb-3">
+                <h3 class="text-xl font-semibold text-white">Byte count</h3>
+                <p class="mt-1 text-sm text-slate-400">Wolumen ruchu w czasie</p>
+              </div>
+              <div class="h-80">
+                <Line :data="liveByteCountChartData" :options="chartOptions" />
+              </div>
+            </article>
+
+            <article class="rounded-3xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/85 p-5 shadow-2xl shadow-black/30">
+              <div class="mb-3">
+                <h3 class="text-xl font-semibold text-white">Jitter</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                  Średni jitter w oknach czasowych
+                </p>
+              </div>
+              <div class="h-80">
+                <Line :data="liveJitterChartData" :options="chartOptions" />
+              </div>
+            </article>
+
+            <article class="rounded-3xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-900/85 p-5 shadow-2xl shadow-black/30">
+              <div class="mb-3">
+                <h3 class="text-xl font-semibold text-white">Anomalie i eventy</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                  ML + rule-based zdarzenia
+                </p>
+              </div>
+              <div class="h-80">
+                <Line :data="liveAnomalyChartData" :options="chartOptions" />
+              </div>
+            </article>
           </div>
-        </section>
+
+          <section v-if="liveDeviceData">
+            <div class="mb-4">
+              <h2 class="text-xl font-semibold text-white">Ostatnie eventy</h2>
+              <p class="mt-1 text-sm text-slate-400">
+                Feed najnowszych anomalii i zdarzeń dla wybranego urządzenia.
+              </p>
+            </div>
+
+            <div class="grid gap-3">
+              <article
+                v-for="event in liveDeviceData.events"
+                :key="event.id"
+                class="rounded-3xl border p-4"
+                :class="severityCardClass(event.severity)"
+              >
+                <div class="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 class="text-lg font-semibold text-white">
+                      {{ event.title }}
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-400">
+                      {{ formatTs(event.detected_at) }} · {{ event.event_type }} · {{ event.severity }}
+                    </p>
+                  </div>
+
+                  <span
+                    class="inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase"
+                    :class="severityPillClass(event.severity)"
+                  >
+                    {{ event.severity }}
+                  </span>
+                </div>
+
+                <div class="grid gap-2.5">
+                  <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-700/40 bg-white/5 px-3 py-3">
+                    <span class="text-sm text-slate-400">Źródło</span>
+                    <span class="text-right text-sm font-semibold text-slate-100 break-all">
+                      {{ event.src_ip ?? "-" }}
+                    </span>
+                  </div>
+
+                  <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-700/40 bg-white/5 px-3 py-3">
+                    <span class="text-sm text-slate-400">Cel</span>
+                    <span class="text-right text-sm font-semibold text-slate-100 break-all">
+                      {{ event.dst_ip ?? "-" }}:{{ event.dst_port ?? "-" }}
+                    </span>
+                  </div>
+
+                  <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-700/40 bg-white/5 px-3 py-3">
+                    <span class="text-sm text-slate-400">Protokół</span>
+                    <span class="text-right text-sm font-semibold text-slate-100 break-all">
+                      {{ event.protocol ?? "-" }}
+                    </span>
+                  </div>
+                </div>
+              </article>
+
+              <div
+                v-if="liveDeviceData.events.length === 0"
+                class="rounded-2xl border border-dashed border-slate-700/60 bg-white/5 px-4 py-4 text-sm text-slate-400"
+              >
+                Brak eventów do wyświetlenia.
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   </div>
 </template>
-
-<style>
-:root {
-  color-scheme: dark;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  --border: rgba(148, 163, 184, 0.14);
-  --text: #e5e7eb;
-  --muted: #94a3b8;
-  --accent: #60a5fa;
-  --shadow: 0 20px 45px rgba(0, 0, 0, 0.3);
-
-  background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 30%),
-    radial-gradient(circle at top right, rgba(99, 102, 241, 0.14), transparent 24%),
-    linear-gradient(180deg, #070b14 0%, #0b1120 100%);
-  color: var(--text);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#app {
-  margin: 0;
-  min-height: 100%;
-}
-
-body {
-  min-width: 320px;
-  color: var(--text);
-}
-
-button,
-select {
-  font: inherit;
-}
-
-.app-shell {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 40px 20px 56px;
-}
-
-.hero {
-  display: grid;
-  gap: 22px;
-  margin-bottom: 28px;
-}
-
-.hero__eyebrow {
-  margin: 0 0 10px;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.hero__title {
-  margin: 0;
-  font-size: clamp(30px, 4vw, 44px);
-  line-height: 1.06;
-  letter-spacing: -0.03em;
-}
-
-.hero__subtitle {
-  margin: 14px 0 0;
-  max-width: 760px;
-  color: var(--muted);
-  font-size: 15px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.stat-card {
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(15, 23, 42, 0.88));
-  box-shadow: var(--shadow);
-}
-
-.stat-card__label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.stat-card__value {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-}
-
-.toolbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.section-title {
-  margin: 0;
-  font-size: 20px;
-}
-
-.section-subtitle {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.device-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: 16px;
-}
-
-.device-card {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 18px;
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.86));
-  box-shadow: var(--shadow);
-}
-
-.device-card--interactive {
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.device-card--interactive:hover {
-  transform: translateY(-2px);
-  border-color: rgba(96, 165, 250, 0.26);
-  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.34);
-}
-
-.device-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.device-card__title {
-  margin: 0;
-  font-size: 21px;
-  font-weight: 700;
-}
-
-.device-card__badges {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-
-.device-card__body {
-  display: grid;
-  gap: 10px;
-}
-
-.device-card__footer {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-}
-
-.device-card__hint {
-  margin: -4px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.kv-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 11px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.08);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.kv-row__label {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.kv-row__value {
-  text-align: right;
-  font-size: 14px;
-  font-weight: 600;
-  word-break: break-all;
-}
-
-.badge,
-.mode-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 6px 10px;
-  border: 1px solid transparent;
-}
-
-.badge--kind {
-  background: rgba(148, 163, 184, 0.12);
-  color: #cbd5e1;
-}
-
-.badge--online {
-  background: rgba(34, 197, 94, 0.14);
-  color: #86efac;
-}
-
-.badge--offline {
-  background: rgba(239, 68, 68, 0.14);
-  color: #fca5a5;
-}
-
-.badge--unknown {
-  background: rgba(148, 163, 184, 0.12);
-  color: #cbd5e1;
-}
-
-.mode-pill {
-  background: rgba(148, 163, 184, 0.12);
-  color: #dbe4f0;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.mode-pill--alert {
-  background: rgba(245, 158, 11, 0.14);
-  color: #fde68a;
-}
-
-.select {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(2, 6, 23, 0.72);
-  color: var(--text);
-  outline: none;
-}
-
-.btn {
-  border: 0;
-  border-radius: 12px;
-  padding: 10px 16px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-width: 136px;
-}
-
-.btn:disabled {
-  opacity: 0.85;
-  cursor: not-allowed;
-}
-
-.btn__spinner {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.28);
-  border-top-color: rgba(255, 255, 255, 0.95);
-  animation: spin 0.8s linear infinite;
-}
-
-.btn--primary {
-  color: white;
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.96), rgba(29, 78, 216, 0.96));
-}
-
-.btn--secondary {
-  color: #dbeafe;
-  background: rgba(30, 41, 59, 0.78);
-  border: 1px solid rgba(96, 165, 250, 0.2);
-}
-
-.error-box {
-  margin-bottom: 18px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(127, 29, 29, 0.22);
-  border: 1px solid rgba(239, 68, 68, 0.22);
-  color: #fecaca;
-}
-
-.charts-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.chart-card {
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 18px;
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.86));
-  box-shadow: var(--shadow);
-}
-
-.chart-card__header {
-  margin-bottom: 12px;
-}
-
-.chart-card__header h3 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.chart-card__header p {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.chart-wrap {
-  height: 320px;
-}
-
-.events-section {
-  margin-bottom: 8px;
-}
-
-.section-head {
-  margin-bottom: 14px;
-}
-
-.events-list {
-  display: grid;
-  gap: 12px;
-}
-
-.event-card {
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 16px;
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.86));
-}
-
-.event-card--critical {
-  border-color: rgba(239, 68, 68, 0.34);
-  background: linear-gradient(180deg, rgba(69, 10, 10, 0.55), rgba(15, 23, 42, 0.86));
-}
-
-.event-card--warning {
-  border-color: rgba(245, 158, 11, 0.28);
-  background: linear-gradient(180deg, rgba(69, 26, 3, 0.45), rgba(15, 23, 42, 0.86));
-}
-
-.event-card__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.event-card__title {
-  margin: 0;
-  font-size: 17px;
-}
-
-.event-card__meta {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.event-card__body {
-  display: grid;
-  gap: 10px;
-}
-
-.empty-box {
-  padding: 16px;
-  border-radius: 14px;
-  border: 1px dashed rgba(148, 163, 184, 0.18);
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.78);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  z-index: 1000;
-}
-
-.modal-card {
-  width: min(1240px, 100%);
-  max-height: 92vh;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 20px;
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.98), rgba(15, 23, 42, 0.96));
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-}
-
-.modal-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.modal-card__actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (max-width: 1100px) {
-  .charts-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 860px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .toolbar,
-  .modal-card__header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
-@media (max-width: 560px) {
-  .app-shell {
-    padding: 24px 14px 40px;
-  }
-
-  .device-card__footer {
-    grid-template-columns: 1fr;
-  }
-
-  .btn {
-    width: 100%;
-  }
-
-  .modal-backdrop {
-    padding: 12px;
-  }
-
-  .modal-card {
-    padding: 14px;
-  }
-}
-</style>
