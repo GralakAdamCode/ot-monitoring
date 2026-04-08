@@ -192,13 +192,12 @@ def parse_packet(pkt):
             "src_ip": arp.psrc,
             "dst_ip": arp.pdst,
             "protocol": "arp",
-            "src_port": 0,
-            "dst_port": 0,
+            "src_port": None,
+            "dst_port": None,
             "tcp_flags": "",
             "frame_len": frame_len,
             "payload_len": payload_len,
         }
-
     if IP not in pkt:
         return None
 
@@ -210,8 +209,8 @@ def parse_packet(pkt):
         "src_ip": ip.src,
         "dst_ip": ip.dst,
         "protocol": "ip",
-        "src_port": 0,
-        "dst_port": 0,
+        "src_port": None,
+        "dst_port": None,
         "tcp_flags": "",
         "frame_len": frame_len,
         "payload_len": payload_len,
