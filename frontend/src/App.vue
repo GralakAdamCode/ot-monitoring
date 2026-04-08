@@ -61,7 +61,7 @@ function formatTs(ts: string) {
   });
 }
 
-const chartOptions = {
+const chartOptions: ChartOptions<"line"> = {
   responsive: true,
   maintainAspectRatio: false,
   animation: false,
@@ -79,11 +79,17 @@ const chartOptions = {
         maxTicksLimit: 8,
         autoSkip: true
       },
-      grid: { color: "rgba(148, 163, 184, 0.08)" }
+      grid: {
+        color: "rgba(148, 163, 184, 0.08)"
+      }
     },
     y: {
-      ticks: { color: "#94a3b8" },
-      grid: { color: "rgba(148, 163, 184, 0.08)" }
+      ticks: {
+        color: "#94a3b8"
+      },
+      grid: {
+        color: "rgba(148, 163, 184, 0.08)"
+      }
     }
   }
 };
