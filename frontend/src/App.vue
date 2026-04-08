@@ -10,11 +10,11 @@ import {
   Legend,
   Filler
 } from "chart.js";
+import type { ChartOptions } from "chart.js";
 import { Line } from "vue-chartjs";
 import type {
   Device,
   TrafficPoint,
-  DashboardEvent,
   DeviceLiveResponse
 } from "./types/dashboard";
 
