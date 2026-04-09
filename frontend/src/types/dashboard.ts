@@ -1,15 +1,16 @@
-export type Device = {
+export interface Device {
   name: string;
   kind: string;
   ip_address: string;
   status: string;
   anomaly_mode: string;
   anomaly_active: boolean;
-  bind_ip?: string | null;
-  bind_port?: number | null;
-  target_ip?: string | null;
-  target_port?: number | null;
-};
+  bind_ip: string | null;
+  bind_port: number | null;
+  target_ip: string | null;
+  target_port: number | null;
+  supported_modes: string[];
+}
 
 export type TrafficPoint = {
   ts: string;

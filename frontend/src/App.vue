@@ -31,7 +31,6 @@ ChartJS.register(
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 const devices = ref<Device[]>([]);
-const modes = ref<string[]>([]);
 const loading = ref(false);
 const savingDevice = ref<string | null>(null);
 const error = ref<string | null>(null);
@@ -59,6 +58,16 @@ function formatTs(ts: string) {
     minute: "2-digit",
     second: "2-digit"
   });
+}
+
+function getDeviceModes(device: Device): string[] {
+  return Array.isArray(device.supported_modes) && device.supported_modes.length > 0
+    ? device.supported_modes
+    : ["normal"];
+}
+
+function isModeSupported(device: Device, mode: string): boolean {
+  return getDeviceModes(device).includes(mode);
 }
 
 const chartOptions: ChartOptions<"line"> = {
@@ -173,24 +182,24 @@ async function loadData() {
   error.value = null;
 
   try {
-    const [devicesRes, modesRes] = await Promise.all([
-      fetch(`${API_BASE}/devices`),
-      fetch(`${API_BASE}/modes`)
-    ]);
+    const devicesRes = await fetch(`${API_BASE}/devices`);
 
-    if (!devicesRes.ok) throw new Error("Nie udało się pobrać urządzeń");
-    if (!modesRes.ok) throw new Error("Nie udało się pobrać trybów");
+    if (!devicesRes.ok) {
+      throw new Error("Nie udało się pobrać urządzeń");
+    }
 
     const devicesData: Device[] = await devicesRes.json();
-    const modesData: string[] = await modesRes.json();
-
     devices.value = devicesData;
-    modes.value = modesData;
 
     const nextSelected: Record<string, string> = {};
+
     for (const device of devicesData) {
-      nextSelected[device.name] = device.anomaly_mode;
+      const supportedModes = getDeviceModes(device);
+      nextSelected[device.name] = isModeSupported(device, device.anomaly_mode)
+        ? device.anomaly_mode
+        : supportedModes[0];
     }
+
     selectedModes.value = nextSelected;
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Nieznany błąd";
@@ -200,8 +209,16 @@ async function loadData() {
 }
 
 async function saveMode(deviceName: string) {
+  const device = devices.value.find((d) => d.name === deviceName);
+  if (!device) return;
+
   const mode = selectedModes.value[deviceName];
   if (!mode) return;
+
+  if (!isModeSupported(device, mode)) {
+    error.value = `Tryb ${mode} nie jest dostępny dla urządzenia ${deviceName}`;
+    return;
+  }
 
   savingDevice.value = deviceName;
   error.value = null;
@@ -216,8 +233,15 @@ async function saveMode(deviceName: string) {
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Nie udało się zapisać trybu");
+      let message = "Nie udało się zapisać trybu";
+      try {
+        const data = await res.json();
+        message = data.detail || message;
+      } catch {
+        const text = await res.text();
+        if (text) message = text;
+      }
+      throw new Error(message);
     }
 
     await loadData();
@@ -442,11 +466,12 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-[1fr_auto]" @click.stop>
-            <select
-              class="w-full rounded-xl border border-slate-700/60 bg-slate-950/80 px-3 py-2.5 text-slate-100 outline-none"
-              v-model="selectedModes[device.name]"
-            >
-              <option v-for="mode in modes" :key="mode" :value="mode">
+            <select class="w-full rounded-xl border border-slate-700/60 bg-slate-950/80 px-3 py-2.5 text-slate-100 outline-none"  v-model="selectedModes[device.name]">
+              <option
+                v-for="mode in getDeviceModes(device)"
+                :key="mode"
+                :value="mode"
+              >
                 {{ mode }}
               </option>
             </select>
