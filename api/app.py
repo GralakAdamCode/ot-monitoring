@@ -40,6 +40,45 @@ app.add_middleware(
 )
 
 
+SUPPORTED_MODES_BY_KIND = {
+    "sensor": {
+        AnomalyMode.NORMAL,
+        AnomalyMode.SILENT,
+        AnomalyMode.BURST,
+        AnomalyMode.JITTER,
+        AnomalyMode.LARGE_PAYLOAD,
+        AnomalyMode.NEW_PORT,
+        AnomalyMode.CHANGE_IP,
+        AnomalyMode.DISCONNECT,
+        AnomalyMode.MALFORMED_PAYLOAD,
+    },
+    "hmi": {
+        AnomalyMode.NORMAL,
+        AnomalyMode.SILENT,
+        AnomalyMode.BURST,
+        AnomalyMode.JITTER,
+        AnomalyMode.NEW_PORT,
+        AnomalyMode.CHANGE_IP,
+        AnomalyMode.DISCONNECT,
+        AnomalyMode.MALFORMED_PAYLOAD,
+    },
+    "plc": {
+        AnomalyMode.NORMAL,
+        AnomalyMode.SILENT,
+        AnomalyMode.DISCONNECT,
+        AnomalyMode.SLOW_RESPONSE,
+        AnomalyMode.MALFORMED_PAYLOAD,
+        AnomalyMode.LARGE_PAYLOAD,
+    },
+    "detector": {
+        AnomalyMode.NORMAL,
+    },
+    "rogue": {
+        AnomalyMode.NORMAL,
+    },
+}
+
+
 class ModeChange(BaseModel):
     mode: str
 
@@ -110,7 +149,20 @@ def to_utc_z(dt: datetime) -> str:
     return dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def build_buckets(observations: list[TrafficObservation], events: list[AnomalyEvent]) -> list[dict[str, Any]]:
+def is_timing_observation(row: TrafficObservation) -> bool:
+    if row.protocol == "udp" and row.dst_port in {10001, 10002, 10003}:
+        return True
+
+    if row.protocol == "tcp" and row.dst_port == 15000:
+        return True
+
+    return False
+
+
+def build_buckets(
+    observations: list[TrafficObservation],
+    events: list[AnomalyEvent],
+) -> list[dict[str, Any]]:
     buckets: dict[str, dict[str, Any]] = defaultdict(
         lambda: {
             "ts": "",
@@ -133,10 +185,14 @@ def build_buckets(observations: list[TrafficObservation], events: list[AnomalyEv
         bucket["packet_rate_sum"] += float(row.packet_rate)
         bucket["byte_count_sum"] += int(row.byte_count)
         bucket["payload_bytes_sum"] += int(row.payload_bytes)
-        bucket["jitter_sum"] += float(row.jitter_ms)
-        bucket["jitter_samples"] += 1
+
+        if is_timing_observation(row):
+            bucket["jitter_sum"] += float(row.jitter_ms)
+            bucket["jitter_samples"] += 1
+
         bucket["max_payload"] = max(bucket["max_payload"], int(row.max_payload))
         bucket["flow_count"] += 1
+
         if row.ml_anomaly:
             bucket["ml_anomaly_count"] += 1
 
@@ -231,6 +287,10 @@ def get_devices():
                     "bind_port": settings.bind_port if settings else None,
                     "target_ip": str(settings.target_ip) if settings and settings.target_ip else None,
                     "target_port": settings.target_port if settings else None,
+                    "supported_modes": sorted(
+                        mode.value
+                        for mode in SUPPORTED_MODES_BY_KIND.get(device.kind.value, {AnomalyMode.NORMAL})
+                    ),
                 }
             )
 
@@ -246,14 +306,23 @@ def set_device_mode(device_name: str, payload: ModeChange):
 
     with SessionLocal.begin() as session:
         stmt = (
-            select(DeviceSettings)
-            .join(Device, Device.id == DeviceSettings.device_id)
+            select(Device, DeviceSettings)
+            .join(DeviceSettings, Device.id == DeviceSettings.device_id)
             .where(Device.name == device_name, Device.is_enabled.is_(True))
         )
-        settings = session.execute(stmt).scalar_one_or_none()
+        row = session.execute(stmt).one_or_none()
 
-        if settings is None:
+        if row is None:
             raise HTTPException(status_code=404, detail="Nie znaleziono urządzenia")
+
+        device, settings = row
+        allowed_modes = SUPPORTED_MODES_BY_KIND.get(device.kind.value, {AnomalyMode.NORMAL})
+
+        if new_mode not in allowed_modes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tryb {new_mode.value} nie jest wspierany dla urządzenia typu {device.kind.value}",
+            )
 
         settings.anomaly_mode = new_mode
         settings.anomaly_active = new_mode != AnomalyMode.NORMAL
@@ -448,9 +517,7 @@ def get_device_live(device_name: str, minutes: int = 5):
             raise HTTPException(status_code=404, detail="Nie znaleziono urządzenia")
 
         device_ip = str(device.ip_address)
-        device_status = (
-            device.settings.status.value if device.settings else "unknown"
-        )
+        device_status = device.settings.status.value if device.settings else "unknown"
 
         if device.kind.value == "detector":
             detector_cutoff = datetime.now(timezone.utc) - timedelta(seconds=15)
