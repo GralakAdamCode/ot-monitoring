@@ -1,7 +1,6 @@
 import statistics
 import threading
 import time
-from collections import defaultdict
 
 from scapy.all import get_if_list, sniff
 
@@ -10,7 +9,6 @@ from baselines import in_warmup, update_baseline
 from capture import handle_packet
 from config import CONFIG
 from emitter import emit_observation
-from models import WindowStats
 from rules.ml import analyze_ml, maybe_fit_iforest, vectorize
 from rules.session import analyze_session_rules
 from rules.silence import check_silence
